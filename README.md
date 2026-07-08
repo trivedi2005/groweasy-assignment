@@ -14,4 +14,4 @@ An intelligent, full-stack CSV importing wizard designed to map arbitrary lead s
 3. Create a `.env` file in the root of the backend folder and provide your API Key:
    ```env
    PORT=5000
-   GEMINI_API_KEY=AQ.Ab8RN6KR1tXF_JgYPFVJnYLPDmRS_UbbmGKI5i8lDvgH1QGsnA
+   GEMINI_API_KEY=your_gemini_api_key_here
