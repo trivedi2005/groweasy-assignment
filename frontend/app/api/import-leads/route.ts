@@ -1,19 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
-// If your Gemini processing code uses specific imports from your old file, 
-// make sure they are included at the top here!
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+const systemInstruction = `
+You are a precise data extraction assistant for GrowEasy CRM.
+Your task is to analyze an array of raw objects from a spreadsheet and map their keys into the strict GrowEasy CRM schema.
+
+Rules:
+1. crm_status: Must strictly be one of: [GOOD_LEAD_FOLLOW_UP, DID_NOT_CONNECT, BAD_LEAD, SALE_DONE].
+2. data_source: Must strictly be one of: [leads_on_demand, meridian_tower, eden_park, varah_swamy, sarjapur_plots]. If none match, use "".
+3. Date Format: Convert any creation date to an ISO string or a format parseable by JS new Date().
+4. Fallback: Put unmapped crucial details or extra text columns into crm_note.
+5. Skip: If an object contains neither an email nor a mobile number, skip it completely.
+
+Return a valid JSON array matching this exact schema:
+Array<{
+  created_at: string;
+  name: string;
+  email: string;
+  country_code: string;
+  mobile_without_country_code: string;
+  company: string;
+  city: string;
+  state: string;
+  country: string;
+  lead_owner: string;
+  crm_status: string;
+  crm_note: string;
+  data_source: string;
+}>
+`;
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Parse the incoming form data or JSON body
-    const data = await request.json(); 
+    // Parse Next.js incoming JSON body
+    const body = await request.json();
+    const rawRecords = JSON.parse(body.rawData);
     
-    // 2. Insert your existing Gemini API parsing logic here
-    // (The same logic you used to handle the CSV/Excel data arrays)
-    
-    return NextResponse.json({ success: true, message: "Leads imported successfully" }, { status: 200 });
+    const batchSize = 15;
+    let successfullyParsed: any[] = [];
+    let totalSkipped = 0;
+
+    for (let i = 0; i < rawRecords.length; i += batchSize) {
+      const batch = rawRecords.slice(i, i + batchSize);
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Process this batch: ${JSON.stringify(batch)}`,
+        config: {
+          systemInstruction: systemInstruction,
+          responseMimeType: "application/json",
+        }
+      });
+
+      const parsedBatch = JSON.parse(response.text || "[]");
+      successfullyParsed = [...successfullyParsed, ...parsedBatch];
+      totalSkipped += (batch.length - parsedBatch.length);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: successfullyParsed,
+      summary: { totalImported: successfullyParsed.length, totalSkipped: totalSkipped >= 0 ? totalSkipped : 0 }
+    }, { status: 200 });
+
   } catch (error: any) {
     console.error("Backend Error:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'AI processing failed.', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
