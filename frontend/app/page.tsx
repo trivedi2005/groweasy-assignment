@@ -30,7 +30,7 @@ export default function CSVImporter() {
   const handleConfirmImport = async () => {
     setLoading(true);
     try {
-        const response = await fetch('https://groweasy-asgnment.netlify.app/.netlify/functions/api/import-leads', {
+        const response = await fetch('/api/import-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rawData: JSON.stringify(csvData) }),
