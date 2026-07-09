@@ -44,7 +44,7 @@ export default function CSVImporter() {
         alert(`Server Error: ${resData.error || 'Unknown error occurred'}\nDetails: ${resData.details || ''}`);
       }
     } catch (err: any) {
-      alert(`Network Error: Cannot connect to backend server. Make sure it is running on port 5000.`);
+      alert(`Network Error: Cannot connect to backend API serverless function.`);
     } finally {
       setLoading(false);
     }
